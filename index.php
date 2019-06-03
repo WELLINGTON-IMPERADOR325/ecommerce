@@ -1,11 +1,19 @@
 <?php 
- use \Psr\Http\Message\ServerRequestInterface as Request;
- use \Psr\Http\Message\ResponseInterface as Response;
-require_once 'vendor/autoload.php';
-$app = new Slim\App();
 
-$app->get('/', function($request,$response,$args) {
-echo "OK";
+require_once("vendor/autoload.php");
+
+$app = new \Slim\Slim();
+
+$app->config('debug', true);
+
+$app->get('/', function() {
+    
+$sql = new Hcode\DB\Sql();
+$results = $sql->select("SELECT * FROM tb_users");
+echo json_encode($results);
+
 });
+
 $app->run();
-?>
+
+ ?>

@@ -1,222 +1,181 @@
 <?php
 /**
- * Slim Framework (https://slimframework.com)
+ * Slim - a micro PHP 5 framework
  *
- * @link      https://github.com/slimphp/Slim
- * @copyright Copyright (c) 2011-2017 Josh Lockhart
- * @license   https://github.com/slimphp/Slim/blob/3.x/LICENSE.md (MIT License)
+ * @author      Josh Lockhart <info@slimframework.com>
+ * @copyright   2011 Josh Lockhart
+ * @link        http://www.slimframework.com
+ * @license     http://www.slimframework.com/license
+ * @version     2.0.0
+ * @package     Slim
+ *
+ * MIT LICENSE
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 namespace Slim\Http;
 
-use Slim\Collection;
-use Slim\Interfaces\Http\HeadersInterface;
-
-/**
- * Headers
- *
- * This class represents a collection of HTTP headers
- * that is used in both the HTTP request and response objects.
- * It also enables header name case-insensitivity when
- * getting or setting a header value.
- *
- * Each HTTP header can have multiple values. This class
- * stores values into an array for each header name. When
- * you request a header value, you receive an array of values
- * for that header.
- */
-class Headers extends Collection implements HeadersInterface
+ /**
+  * HTTP Headers
+  *
+  * This class is an abstraction of the HTTP response headers and
+  * provides array access to the header list while automatically
+  * stores and retrieves headers with lowercase canonical keys regardless
+  * of the input format.
+  *
+  * This class also implements the `Iterator` and `Countable`
+  * interfaces for even more convenient usage.
+  *
+  * @package Slim
+  * @author  Josh Lockhart
+  * @since   1.6.0
+  */
+class Headers implements \ArrayAccess, \Iterator, \Countable
 {
     /**
-     * Special HTTP headers that do not have the "HTTP_" prefix
-     *
-     * @var array
+     * @var array HTTP headers
      */
-    protected static $special = [
-        'CONTENT_TYPE' => 1,
-        'CONTENT_LENGTH' => 1,
-        'PHP_AUTH_USER' => 1,
-        'PHP_AUTH_PW' => 1,
-        'PHP_AUTH_DIGEST' => 1,
-        'AUTH_TYPE' => 1,
-    ];
+    protected $headers;
 
     /**
-     * Create new headers collection with data extracted from
-     * the application Environment object
-     *
-     * @param Environment $environment The Slim application Environment
-     *
-     * @return self
+     * @var array Map canonical header name to original header name
      */
-    public static function createFromEnvironment(Environment $environment)
-    {
-        $data = [];
-        $environment = self::determineAuthorization($environment);
-        foreach ($environment as $key => $value) {
-            $key = strtoupper($key);
-            if (isset(static::$special[$key]) || strpos($key, 'HTTP_') === 0) {
-                if ($key !== 'HTTP_CONTENT_LENGTH') {
-                    $data[$key] =  $value;
-                }
-            }
-        }
+    protected $map;
 
-        return new static($data);
+    /**
+     * Constructor
+     * @param  array $headers
+     */
+    public function __construct($headers = array())
+    {
+        $this->merge($headers);
     }
 
     /**
-     * If HTTP_AUTHORIZATION does not exist tries to get it from
-     * getallheaders() when available.
-     *
-     * @param Environment $environment The Slim application Environment
-     *
-     * @return Environment
+     * Merge Headers
+     * @param  array $headers
      */
-
-    public static function determineAuthorization(Environment $environment)
+    public function merge($headers)
     {
-        $authorization = $environment->get('HTTP_AUTHORIZATION');
-
-        if (empty($authorization) && is_callable('getallheaders')) {
-            $headers = getallheaders();
-            $headers = array_change_key_case($headers, CASE_LOWER);
-            if (isset($headers['authorization'])) {
-                $environment->set('HTTP_AUTHORIZATION', $headers['authorization']);
-            }
+        foreach ($headers as $name => $value) {
+            $this[$name] = $value;
         }
-
-        return $environment;
     }
 
     /**
-     * Return array of HTTP header names and values.
-     * This method returns the _original_ header name
-     * as specified by the end user.
-     *
-     * @return array
-     */
-    public function all()
-    {
-        $all = parent::all();
-        $out = [];
-        foreach ($all as $key => $props) {
-            $out[$props['originalKey']] = $props['value'];
-        }
-
-        return $out;
-    }
-
-    /**
-     * Set HTTP header value
-     *
-     * This method sets a header value. It replaces
-     * any values that may already exist for the header name.
-     *
-     * @param string $key   The case-insensitive header name
-     * @param string $value The header value
-     */
-    public function set($key, $value)
-    {
-        if (!is_array($value)) {
-            $value = [$value];
-        }
-        parent::set($this->normalizeKey($key), [
-            'value' => $value,
-            'originalKey' => $key
-        ]);
-    }
-
-    /**
-     * Get HTTP header value
-     *
-     * @param  string  $key     The case-insensitive header name
-     * @param  mixed   $default The default value if key does not exist
-     *
-     * @return string[]
-     */
-    public function get($key, $default = null)
-    {
-        if ($this->has($key)) {
-            return parent::get($this->normalizeKey($key))['value'];
-        }
-
-        return $default;
-    }
-
-    /**
-     * Get HTTP header key as originally specified
-     *
-     * @param  string   $key     The case-insensitive header name
-     * @param  mixed    $default The default value if key does not exist
-     *
+     * Transform header name into canonical form
+     * @param  string $name
      * @return string
      */
-    public function getOriginalKey($key, $default = null)
+    protected function canonical($name)
     {
-        if ($this->has($key)) {
-            return parent::get($this->normalizeKey($key))['originalKey'];
+        return strtolower(trim($name));
+    }
+
+    /**
+     * Array Access: Offset Exists
+     */
+    public function offsetExists($offset)
+    {
+        return isset($this->headers[$this->canonical($offset)]);
+    }
+
+    /**
+     * Array Access: Offset Get
+     */
+    public function offsetGet($offset)
+    {
+        $canonical = $this->canonical($offset);
+        if (isset($this->headers[$canonical])) {
+            return $this->headers[$canonical];
+        } else {
+            return null;
         }
-
-        return $default;
     }
 
     /**
-     * Add HTTP header value
-     *
-     * This method appends a header value. Unlike the set() method,
-     * this method _appends_ this new value to any values
-     * that already exist for this header name.
-     *
-     * @param string       $key   The case-insensitive header name
-     * @param array|string $value The new header value(s)
+     * Array Access: Offset Set
      */
-    public function add($key, $value)
+    public function offsetSet($offset, $value)
     {
-        $oldValues = $this->get($key, []);
-        $newValues = is_array($value) ? $value : [$value];
-        $this->set($key, array_merge($oldValues, array_values($newValues)));
+        $canonical = $this->canonical($offset);
+        $this->headers[$canonical] = $value;
+        $this->map[$canonical] = $offset;
     }
 
     /**
-     * Does this collection have a given header?
-     *
-     * @param  string $key The case-insensitive header name
-     *
-     * @return bool
+     * Array Access: Offset Unset
      */
-    public function has($key)
+    public function offsetUnset($offset)
     {
-        return parent::has($this->normalizeKey($key));
+        $canonical = $this->canonical($offset);
+        unset($this->headers[$canonical], $this->map[$canonical]);
     }
 
     /**
-     * Remove header from collection
-     *
-     * @param  string $key The case-insensitive header name
+     * Countable: Count
      */
-    public function remove($key)
+    public function count()
     {
-        parent::remove($this->normalizeKey($key));
+        return count($this->headers);
     }
 
     /**
-     * Normalize header name
-     *
-     * This method transforms header names into a
-     * normalized form. This is how we enable case-insensitive
-     * header names in the other methods in this class.
-     *
-     * @param  string $key The case-insensitive header name
-     *
-     * @return string Normalized header name
+     * Iterator: Rewind
      */
-    public function normalizeKey($key)
+    public function rewind()
     {
-        $key = strtr(strtolower($key), '_', '-');
-        if (strpos($key, 'http-') === 0) {
-            $key = substr($key, 5);
-        }
+        reset($this->headers);
+    }
 
-        return $key;
+    /**
+     * Iterator: Current
+     */
+    public function current()
+    {
+        return current($this->headers);
+    }
+
+    /**
+     * Iterator: Key
+     */
+    public function key()
+    {
+        $key = key($this->headers);
+
+        return $this->map[$key];
+    }
+
+    /**
+     * Iterator: Next
+     */
+    public function next()
+    {
+        return next($this->headers);
+    }
+
+    /**
+     * Iterator: Valid
+     */
+    public function valid()
+    {
+        return current($this->headers) !== false;
     }
 }
