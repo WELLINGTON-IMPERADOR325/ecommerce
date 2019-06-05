@@ -2,7 +2,8 @@
 require_once("vendor/autoload.php");
 use \Slim\Slim;
 use \Hcode\Page;
-use Hcode\Page\PageAdmin;
+use Hcode\PageAdmin;
+use Rain\TpL;
 $app = new Slim();
 $app->config('debug', true);
 $app->get('/', function() {
@@ -11,7 +12,7 @@ $app->get('/', function() {
 
 });
 
-$app->get('/index', function() {
+$app->get('/admin', function() {
 $page = new PageAdmin();
 $page->setTpl("index");    
 
