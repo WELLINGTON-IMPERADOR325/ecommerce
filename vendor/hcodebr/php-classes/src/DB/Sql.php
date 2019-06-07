@@ -1,5 +1,4 @@
 <?php 
-
 namespace Hcode\DB;
 
 class Sql {
