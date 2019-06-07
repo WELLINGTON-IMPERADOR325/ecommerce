@@ -7,11 +7,14 @@ class Page{
 	private $tpl;
 	private $options = [];
 	private $defaults = [
+		"header"=>true,
+		"footer"=>true,
 		"data"=>[]
 	];
 	public function __construct($opts = array(),$tpl_dir = "/views/"){
 		
-		$this->options = array_merge($this->defaults, $opts);
+		$this->defaults["data"]["session"] = $_SESSION;
+		$this->options = array_merge($this->defaults, $opts);// aqui o metodo __construct vai fazer o merge das paginas
 		
 		$config = array(
 			"tpl_dir"       => $_SERVER["DOCUMENT_ROOT"].$tpl_dir,
@@ -22,7 +25,7 @@ class Page{
 		Tpl::configure( $config );
 		$this->tpl = new TpL;
 		$this->setData($this->options["data"]);
-		$this->tpl->draw("header");//cabecalho
+		if($this->options["header"] === true) $this->tpl->draw("header");//cabecalho
 	}
 	private function setData($data = array())
 	{
@@ -37,7 +40,7 @@ class Page{
 	}
 	
 	public function __destruct(){//FOOTER
-		$this->tpl->draw("footer");
+		if($this->options["footer"] === true ) $this->tpl->draw("footer");
 		
 	}
 }
