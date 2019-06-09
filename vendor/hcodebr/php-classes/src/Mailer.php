@@ -4,7 +4,7 @@ use Rain\TpL;
 class Mailer {
 	
 	const USERNAME = "manutvgamaaraujo@gmail.com";
-	const PASSWORD = "anewyerushalem777";
+	const PASSWORD = "";
 	const NAME_FROM = "Emnauelle teste ";
 	
 	private $mail;
@@ -82,10 +82,10 @@ class Mailer {
 		// Substitua o corpo do texto simples por um criado manualmente
 		$this->mail->AltBody = 'Este é um corpo de mensagem de texto simples';
 	}
-	public function send() 
-	{
-		return $this->mail->send();
-	}
+		public function send() 
+		{
+			return $this->mail->send();
+		}
 }
 
 ?>
