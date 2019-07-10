@@ -9,7 +9,7 @@ use \Hcode\Model\User;
 
 $app = new Slim();
 
-$app->config('debug', true);
+$app->config("debug", true);
 
 $app->get('/', function() {
     
@@ -19,52 +19,52 @@ $app->get('/', function() {
     
 });
 
-$app->get('/admin', function() {
+$app->get("/admin", function() {
     
     User::verifyLogin();
 
     $page = new PageAdmin();
 
-    $page->setTpl('index');
+    $page->setTpl("index");
     
 });
 
-$app->get('/admin/', function() {
+$app->get("/admin/", function() {
     
     User::verifyLogin();
 
     $page = new PageAdmin();
 
-    $page->setTpl('index');
+    $page->setTpl("index");
     
 });
 
-$app->get('/admin/login', function() {
+$app->get("/admin/login", function() {
     
     $page = new PageAdmin(array(
-        'header'=>false,
-        'footer'=>false
+        "header"=>false,
+        "footer"=>false
     ));
 
-    $page->setTpl('login');
+    $page->setTpl("login");
     
 });
 
-$app->post('/admin/login', function(){
-    User::login($_POST['login'], $_POST['password']);
+$app->post("/admin/login", function(){
+    User::login($_POST["login"], $_POST["password"]);
 
-    header('Location: /admin');
+    header("Location: /admin");
     exit;
 });
 
-$app->get('/admin/logout', function(){
+$app->get("/admin/logout", function(){
     User::logout();
 
-    header('Location: /admin/login');
+    header("Location: /admin/login");
     exit;
 });
 
-$app->get('/admin/users', function(){
+$app->get("/admin/users", function(){
     
     User::verifyLogin();
 
@@ -72,21 +72,21 @@ $app->get('/admin/users', function(){
 
     $page = new PageAdmin();
 
-    $page->setTpl('users', array(
+    $page->setTpl("users", array(
         "users" => $users
     ));
 });
 
-$app->get('/admin/users/create', function(){
+$app->get("/admin/users/create", function(){
     
     User::verifyLogin();
 
     $page = new PageAdmin();
 
-    $page->setTpl('users-create');
+    $page->setTpl("users-create");
 });
 
-$app->get('/admin/users/:iduser/delete', function($iduser){
+$app->get("/admin/users/:iduser/delete", function($iduser){
 
     User::verifyLogin();
 
@@ -101,7 +101,7 @@ $app->get('/admin/users/:iduser/delete', function($iduser){
     
 });
 
-$app->get('/admin/users/:iduser', function($iduser){
+$app->get("/admin/users/:iduser", function($iduser){
     
     User::verifyLogin();
     $user = new User();
@@ -110,7 +110,7 @@ $app->get('/admin/users/:iduser', function($iduser){
 
     $page = new PageAdmin();
 
-    $page->setTpl('users-update', array(
+    $page->setTpl("users-update", array(
         'user' => $user->getValues()
     ));
 });
@@ -129,7 +129,7 @@ $app->post('/admin/users/create', function(){
 
 });
 
-$app->post('/admin/users/:iduser', function($iduser){
+$app->post("/admin/users/:iduser", function($iduser){
 
     User::verifyLogin();
 
@@ -147,32 +147,69 @@ $app->post('/admin/users/:iduser', function($iduser){
     exit;
 });
 
-$app->get("/admin/forgot", function(){
+$app->get("/admin/forgot", function() {
 
-    $page = new PageAdmin(array(
-        "header"=>false,
-        "footer"=>false// pagina pra mandar email de redefinir senha! 
-    ));
+	$page = new PageAdmin([
+		"header"=>false,
+		"footer"=>false
+	]);
 
-    $page->setTpl("forgot");
+	$page->setTpl("forgot");	
+
 });
 
-$app->post("/admin/forgot", function (){
+$app->post("/admin/forgot", function(){
 
-    $user = User::getForgot($_POST["email"]);
+	$user = User::getForgot($_POST["email"]);
 
-    header("Location: /admin/forgot/sent");
-    exit;// manda email pedido para redefinir a senha!
+	header("Location: /admin/forgot/sent");
+	exit;
+
 });
 
 $app->get("/admin/forgot/sent", function(){
 
+	$page = new PageAdmin([
+		"header"=>false,
+		"footer"=>false
+	]);
+
+	$page->setTpl("forgot-sent");	
+
+});
+
+$app->get("/admin/forgot/reset", function(){
+	$user = User::validForgotDecrypt($_GET["code"]);
     $page = new PageAdmin([
-       "header" => false,
-       "footer" => false
+        "header" => false,
+        "footer" => false
     ]);
 
-    $page->setTpl("forgot-sent");
+    $page->setTpl("forgot-reset",array(
+	"name"=>$user["desperson"],
+	"code"=>$_GET["code"]
+	));
+});
+
+$app->post("/admin/forgot/reset", function(){
+
+    $forgot = User::validForgotDecrypt($_POST["code"]);
+
+    User::setForgotUsed($forgot["idrecovery"]);
+
+    $user = new User();
+
+    $user->get((int)$forgot["iduser"]);
+
+    $user->setPassword($_POST["password"]);
+
+    $page = new PageAdmin([
+        "header" => false,
+        "footer" => false
+    ]);
+
+    $page->setTpl("forgot-reset-success");
+	
 });
 
 
